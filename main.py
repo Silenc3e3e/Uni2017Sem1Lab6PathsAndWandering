@@ -52,7 +52,11 @@ def on_key_press(symbol, modifiers):
             agent.max_force += 10.0 * agent.floatScale
 
 def add_agent():
-    newAgent = Agent(world)
+    newAgent = Agent(world, world.hunter.floatScale, world.hunter.mass/world.hunter.floatScale,'seek',
+        world.hunter.friction/world.hunter.floatScale, world.hunter.panicDist/world.hunter.floatScale,
+        world.hunter.max_speed/world.hunter.floatScale, world.hunter.waypoint_threshold/world.hunter.floatScale, world.hunter.loop,
+        world.hunter.wander_dist/world.hunter.floatScale, world.hunter.wander_radius/world.hunter.floatScale,
+        world.hunter.wander_jitter/world.hunter.floatScale, world.hunter.show_info)
     world.agents.append(newAgent)
     world.hunter = newAgent
 
@@ -61,15 +65,18 @@ def on_resize(cx, cy):
     world.cy = cy
 def render_stats(world):
     egi.text_color((1.0, 1.0, 1.0, 1))
-    egi.text_at_pos(10, -100, 'Max Speed = ' + str(world.hunter.max_speed/world.hunter.floatScale))
-    egi.text_at_pos(10, -120, 'Max Force = ' + str(world.hunter.max_force/world.hunter.floatScale))
-    egi.text_at_pos(10, -140, 'Mass = ' + str(world.hunter.mass/world.hunter.floatScale))
-    egi.text_at_pos(10, -160, 'Friction = ' + str(world.hunter.friction/world.hunter.floatScale))
-    egi.text_at_pos(10, -180, 'Panic Distance = ' + str(world.hunter.panicDist/world.hunter.floatScale))
-    egi.text_at_pos(10, -210, 'Wander Values')
-    egi.text_at_pos(10, -230, 'Wander Distance = ' + str(world.hunter.wander_dist/world.hunter.floatScale))
-    egi.text_at_pos(10, -250, 'Wander radius = ' + str(world.hunter.wander_radius/world.hunter.floatScale))
-    egi.text_at_pos(10, -270, 'Wander jitter = ' + str(world.hunter.wander_jitter/world.hunter.floatScale))
+    depthy = -40
+    egi.text_at_pos(10, depthy, 'Game Scale = ' + str(world.hunter.floatScale))
+    egi.text_at_pos(10, depthy-20, 'Max Speed = ' + str(world.hunter.max_speed/world.hunter.floatScale))
+    egi.text_at_pos(10, depthy-40, 'Max Force = ' + str(world.hunter.max_force/world.hunter.floatScale))
+    egi.text_at_pos(10, depthy-60, 'Mass = ' + str(world.hunter.mass/world.hunter.floatScale))
+    egi.text_at_pos(10, depthy-80, 'Friction = ' + str(world.hunter.friction/world.hunter.floatScale))
+    egi.text_at_pos(10, depthy-100, 'Panic Distance = ' + str(world.hunter.panicDist/world.hunter.floatScale))
+    egi.text_at_pos(10, depthy-130, 'Waypoint Threshold = ' + str(world.hunter.waypoint_threshold/world.hunter.floatScale))
+    egi.text_at_pos(10, depthy-150, 'Waypoint Loop = ' + str(world.hunter.loop))
+    egi.text_at_pos(10, depthy-180, 'Wander Distance = ' + str(world.hunter.wander_dist/world.hunter.floatScale))
+    egi.text_at_pos(10, depthy-200, 'Wander radius = ' + str(world.hunter.wander_radius/world.hunter.floatScale))
+    egi.text_at_pos(10, depthy-220, 'Wander jitter = ' + str(world.hunter.wander_jitter/world.hunter.floatScale))
 
 
 if __name__ == '__main__':
@@ -89,8 +96,10 @@ if __name__ == '__main__':
 
     # create a world for agents
     world = World(500, 500)
-    # add two agents
-    add_agent()
+    # add two agents (first one is done manually so default agent values are entered)
+    newAgent = Agent(world)
+    world.agents.append(newAgent)
+    world.hunter = newAgent
     add_agent()
     # unpause the world ready for movement
     world.paused = False

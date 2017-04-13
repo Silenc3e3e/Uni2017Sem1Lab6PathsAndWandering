@@ -35,7 +35,7 @@ class Agent(object):
         'fast': 2,
     }
 
-    def __init__(self, world=None, scale=10.0, mass=0.1, mode='seek', friction = 0.01):
+    def __init__(self, world=None, scale=10.0, mass=0.1, mode='seek', friction = 0.01, panicDistance = 35, maxSpeed = 150.0, waypointThreshold = 50, waypointLoop = False, wanderDistance = 3.0, wanderRadius = 2.0, wanderJitter = 10.0, displayInfo = False):
         # keep a reference to the world object
         self.world = world
         self.mode = mode
@@ -53,18 +53,18 @@ class Agent(object):
         self.friction = friction * scale
 
         self.hunterTargVec = Vector2D(10,10)
-        self.panicDist = 35 * scale
+        self.panicDist = panicDistance * scale
         self.hunterTarg = None
 
         # NEW WANDER INFO
         self.wander_target = Vector2D(1, 0)
-        self.wander_dist = 3.0 * scale
-        self.wander_radius = 2.0 * scale
-        self.wander_jitter = 10.0 * scale
-        self.bRadius = 1.0 * scale
+        self.wander_dist = wanderDistance * scale
+        self.wander_radius = wanderRadius * scale
+        self.wander_jitter = wanderJitter * scale
+        #self.bRadius = 1.0 * scale Not sure what this is meant to be used for?
 
         # limits?
-        self.max_speed = 150.0 * scale
+        self.max_speed = maxSpeed * scale
         self.max_force = (self.max_speed/2)
 
         # data for drawing this agent
@@ -88,12 +88,12 @@ class Agent(object):
 
         # path to follow
         self.path = Path()
-        self.loop = False
+        self.loop = waypointLoop
         self.randomise_path()  # <-- Doesn’t exist yet but you’ll create it
-        self.waypoint_threshold = 50  # <-- Work out a value for this as you test!
+        self.waypoint_threshold = waypointThreshold * scale # <-- Work out a value for this as you test!
 
         # debug draw info?
-        self.show_info = False
+        self.show_info = displayInfo
 
     def calculate(self, delta):
         # reset the steering force
