@@ -35,7 +35,7 @@ class Agent(object):
         'fast': 2,
     }
 
-    def __init__(self, world=None, scale=10.0, mass=0.1, mode='seek', friction = 0.01, panicDistance = 35, maxSpeed = 150.0, waypointThreshold = 50, waypointLoop = False, wanderDistance = 3.0, wanderRadius = 2.0, wanderJitter = 10.0, displayInfo = False):
+    def __init__(self, world=None, scale=10.0, mass=0.1, mode='seek', friction = 0.01, panicDistance = 35, maxSpeed = 150.0, waypointThreshold = 50, waypointLoop = False, wanderDistance = 4.0, wanderRadius = 2.0, wanderJitter = 10.0, displayInfo = False, maxForce = 75.0):
         # keep a reference to the world object
         self.world = world
         self.mode = mode
@@ -46,7 +46,7 @@ class Agent(object):
         self.heading = Vector2D(sin(dir), cos(dir))
         self.side = self.heading.perp()
         self.floatScale = scale
-        self.scale = Vector2D(scale, scale)  # easy scaling of agent size
+        self.scale = Vector2D(1, 1)  # easy scaling of agent size
         self.force = Vector2D()
         self.accel = Vector2D()  # current steering force
         self.mass = mass
@@ -65,7 +65,10 @@ class Agent(object):
 
         # limits?
         self.max_speed = maxSpeed
-        self.max_force = (self.max_speed/2)
+        if maxForce == None:
+            self.max_force = (self.max_speed/2)
+        else:
+            self.max_force = maxForce
 
         # data for drawing this agent
         self.color = 'ORANGE'
@@ -190,7 +193,7 @@ class Agent(object):
             color = 'RED'
             shape = self.hunter_shape
         egi.set_pen_color(name=color)
-        pts = self.world.transform_points(shape, self.pos, self.heading, self.side, self.scale)
+        pts = self.world.transform_points(shape, self.pos, self.heading, self.side, self.scale * self.floatScale)
         # draw it!
         egi.closed_shape(pts)
         if ((self.mode == 'pursuit' or self.mode == 'flee') and self == self.world.hunter):
@@ -207,13 +210,13 @@ class Agent(object):
 
         # add some handy debug drawing info lines - force and velocity
         if self.show_info:
-            s = 0.5 # <-- scaling factor
+            #s = 0.5 # <-- scaling factor
             # force
             egi.red_pen()
-            egi.line_with_arrow(self.pos, self.pos + self.force * s, 5)
+            egi.line_with_arrow(self.pos, self.pos + self.force, 5) #replaced s with self.floatScale
             # velocity
             egi.grey_pen()
-            egi.line_with_arrow(self.pos, self.pos + self.vel * s, 5)
+            egi.line_with_arrow(self.pos, self.pos + self.vel, 5) #replaced s with self.floatScale
             # net (desired) change
             # egi.white_pen()
             # egi.line_with_arrow(self.pos+self.vel * s, self.pos+ (self.force+self.vel) * s, 5)
@@ -294,7 +297,7 @@ class Agent(object):
         # project the target into world space
         wld_target = self.world.transform_point(target, self.pos, self.heading, self.side)
         # and steer towards it 
-        return self.seek(wld_target)
+        return self.arrive(wld_target,'normal')
 
     def FindClosest(self, agentFrom):
         closest = None
