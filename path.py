@@ -48,7 +48,8 @@ class Path(object):
         ''' Update the current point to the next in the path list.
             Resets to the first point if looped is True. '''
         assert self._num_pts > 0
-        self._cur_pt_idx += 1
+        if not self.is_finished():
+            self._cur_pt_idx += 1
         if self.is_finished() and self.looped:
             self._cur_pt_idx = 0
 

@@ -9,6 +9,7 @@ from vector2d import Point2D
 from graphics import egi, KEY
 from math import sin, cos, radians
 from random import random, randrange
+from path import Path
 
 AGENT_MODES = {
     KEY._1: 'seek',
@@ -16,7 +17,9 @@ AGENT_MODES = {
     KEY._3: 'arrive_normal',
     KEY._4: 'arrive_fast',
     KEY._5: 'flee',
-    KEY._6: 'pursuit'
+    KEY._6: 'pursuit',
+    KEY._7: 'follow_path',
+    KEY._8: 'wander'
 }
 class DummyAgent(object):
     def __init__(self, x, y):
@@ -76,7 +79,10 @@ class Agent(object):
         ]
 
         ### path to follow?
-        # self.path = ??
+        self.path = Path()
+        self.loop = False
+        self.randomise_path()  # <-- Doesn’t exist yet but you’ll create it
+        self.waypoint_threshold = 50  # <-- Work out a value for this as you test!
 
         ### wander details
         # self.wander_?? ...
@@ -126,6 +132,15 @@ class Agent(object):
                 self.hunterTarg = target
             target.mode = 'flee'
             force = self.pursuit(target)
+        elif mode == 'follow_path':
+            if self.path.current_pt().distance(self.pos) < self.waypoint_threshold:
+                    self.path.inc_current_pt()
+            if self.path.is_finished():
+                force = self.arrive(self.path.current_pt(),'fast')
+            else:
+                if self.path.current_pt().distance(self.pos) < self.waypoint_threshold:
+                    self.path.inc_current_pt()
+                force = self.seek(self.path.current_pt())
         else:
             force = Vector2D()
         self.force = force
@@ -155,8 +170,7 @@ class Agent(object):
     def render(self, color=None):
         # draw the path if it exists and the mode is follow
         if self.mode == 'follow_path':
-            ## ...
-            pass
+            self.path.render()
 
         ''' Draw the triangle agent with color'''
         color = None
@@ -259,3 +273,9 @@ class Agent(object):
                 closest = agent
                 ClosestDistance = distToAgent
         return closest
+
+    def randomise_path(self):
+        cx = self.world.cx  # width
+        cy = self.world.cy  # height
+        margin = min(cx, cy) * (1/6)  # use this for padding in the next line ...
+        self.path.create_random_path(4,margin,margin,cx-margin,cy-margin, self.loop)  # you have to figure out the parameters 
