@@ -49,22 +49,22 @@ class Agent(object):
         self.scale = Vector2D(scale, scale)  # easy scaling of agent size
         self.force = Vector2D()
         self.accel = Vector2D()  # current steering force
-        self.mass = mass * scale
-        self.friction = friction * scale
+        self.mass = mass
+        self.friction = friction
 
         self.hunterTargVec = Vector2D(10,10)
-        self.panicDist = panicDistance * scale
+        self.panicDist = panicDistance
         self.hunterTarg = None
 
         # NEW WANDER INFO
         self.wander_target = Vector2D(1, 0)
-        self.wander_dist = wanderDistance * scale
-        self.wander_radius = wanderRadius * scale
-        self.wander_jitter = wanderJitter * scale
+        self.wander_dist = wanderDistance
+        self.wander_radius = wanderRadius
+        self.wander_jitter = wanderJitter
         #self.bRadius = 1.0 * scale Not sure what this is meant to be used for?
 
         # limits?
-        self.max_speed = maxSpeed * scale
+        self.max_speed = maxSpeed
         self.max_force = (self.max_speed/2)
 
         # data for drawing this agent
@@ -90,7 +90,7 @@ class Agent(object):
         self.path = Path()
         self.loop = waypointLoop
         self.randomise_path()  # <-- Doesn’t exist yet but you’ll create it
-        self.waypoint_threshold = waypointThreshold * scale # <-- Work out a value for this as you test!
+        self.waypoint_threshold = waypointThreshold # <-- Work out a value for this as you test!
 
         # debug draw info?
         self.show_info = displayInfo
@@ -125,7 +125,7 @@ class Agent(object):
         elif mode == 'pursuit' and self == self.world.hunter:
             target = self.FindClosest(self)
             if self.hunterTarg != None:
-                if (self.hunterTarg.pos - self.pos).length() > self.panicDist * 1.05:
+                if (self.hunterTarg.pos - self.pos).length() > self.panicDist * self.floatScale * 1.05:
                     if target != self.hunterTarg:
                         if self.hunterTarg != None:
                             self.hunterTarg.mode = 'pursuit'
@@ -138,12 +138,12 @@ class Agent(object):
             target.mode = 'flee'
             force = self.pursuit(target)
         elif mode == 'follow_path':
-            if self.path.current_pt().distance(self.pos) < self.waypoint_threshold:
+            if self.path.current_pt().distance(self.pos) < self.waypoint_threshold * self.floatScale:
                     self.path.inc_current_pt()
             if self.path.is_finished():
                 force = self.arrive(self.path.current_pt(),'fast')
             else:
-                if self.path.current_pt().distance(self.pos) < self.waypoint_threshold:
+                if self.path.current_pt().distance(self.pos) < self.waypoint_threshold * self.floatScale:
                     self.path.inc_current_pt()
                 force = self.seek(self.path.current_pt())
         elif mode == 'wander':
@@ -156,16 +156,16 @@ class Agent(object):
     def update(self, delta):
         ''' update vehicle position and orientation '''
         self.force = self.calculate(delta)
-        self.force.truncate(self.max_force)
+        self.force.truncate(self.max_force * self.floatScale)
 
-        self.accel = self.force / self.mass
+        self.accel = self.force / (self.mass * self.floatScale)
         # new velocity
         self.vel += self.accel * delta
         # proportional friction
-        self.vel = self.vel * (1-(self.friction*(self.vel.length()/self.max_speed)))
+        self.vel = self.vel * (1-((self.friction * self.floatScale)*(self.vel.length()/(self.max_speed * self.floatScale))))
 
         # check for limits of new velocity
-        self.vel.truncate(self.max_speed)
+        self.vel.truncate(self.max_speed * self.floatScale)
         # update position
         self.pos += self.vel * delta
         # update heading is non-zero velocity (moving)
@@ -222,14 +222,14 @@ class Agent(object):
             # draw wander info?
             if self .mode == 'wander' :
                 # calculate the center of the wander circle in front of the agent
-                wnd_pos = Vector2D( self.wander_dist, 0)
+                wnd_pos = Vector2D( self.wander_dist * self.floatScale, 0)
                 wld_pos = self .world.transform_point(wnd_pos, self .pos, self .heading, self .side)
                 # draw the wander circle
                 egi.green_pen()
-                egi.circle(wld_pos, self.wander_radius)
+                egi.circle(wld_pos, self.wander_radius * self.floatScale)
                 # draw the wander target (little circle on the big circle)
                 egi.red_pen()
-                wnd_pos = ( self.wander_target + Vector2D( self.wander_dist, 0))
+                wnd_pos = ( self.wander_target + Vector2D( self.wander_dist * self.floatScale, 0))
                 wld_pos = self.world.transform_point(wnd_pos, self.pos, self.heading, self.side)
                 egi.circle(wld_pos, 3) 
     def speed(self):
@@ -239,13 +239,13 @@ class Agent(object):
 
     def seek(self, target_pos):
         ''' move towards target position '''
-        desired_vel = (target_pos - self.pos).normalise() * self.max_speed
+        desired_vel = (target_pos - self.pos).normalise() * (self.max_speed * self.floatScale)
         return (desired_vel - self.vel)
 
     def flee(self, hunter_pos, delta):
         ''' move away from hunter position '''
-        if (hunter_pos - self.pos).length() < self.panicDist:
-            desired_vel = -((hunter_pos - self.pos).normalise() * self.max_speed)
+        if (hunter_pos - self.pos).length() < self.panicDist * self.floatScale:
+            desired_vel = -((hunter_pos - self.pos).normalise() * (self.max_speed * self.floatScale))
             return (desired_vel - self.vel)
         return self.wander(delta)
 
@@ -260,7 +260,7 @@ class Agent(object):
             # desired deceleration rate
             speed = dist / decel_rate
             # make sure the velocity does not exceed the max
-            speed = min(speed, self.max_speed)
+            speed = min(speed, (self.max_speed * self.floatScale))
             # from here proceed just like Seek except we don't need to
             # normalize the to_target vector because we have already gone to the
             # trouble of calculating its length for dist.
@@ -281,14 +281,14 @@ class Agent(object):
         wt = self.wander_target
         # this behaviour is dependent on the update rate, so this line must
         # be included when using time independent framerate.
-        jitter_tts = self.wander_jitter * delta # this time slice
+        jitter_tts = self.wander_jitter * self.floatScale * delta # this time slice
         # first, add a small random vector to the target's position
         wt += Vector2D(uniform(-1,1) * jitter_tts, uniform(-1,1) * jitter_tts)
         # re-project this new vector back on to a unit circle
         wt.normalise()
         # increase the length of the vector to the same as the radius
         # of the wander circle
-        wt *= self.wander_radius
+        wt *= self.wander_radius * self.floatScale
         # move the target into a position WanderDist in front of the agent
         target = wt + Vector2D( self .wander_dist, 0)
         # project the target into world space
