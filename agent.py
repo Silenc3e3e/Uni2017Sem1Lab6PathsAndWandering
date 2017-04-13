@@ -65,7 +65,7 @@ class Agent(object):
 
         # limits?
         self.max_speed = 150.0 * scale
-        self.max_force = (self.max_speed/2) * scale
+        self.max_force = (self.max_speed/2)
 
         # data for drawing this agent
         self.color = 'ORANGE'

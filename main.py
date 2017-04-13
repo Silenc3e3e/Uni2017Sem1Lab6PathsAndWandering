@@ -59,6 +59,17 @@ def add_agent():
 def on_resize(cx, cy):
     world.cx = cx
     world.cy = cy
+def render_stats(world):
+    egi.text_color((1.0, 1.0, 1.0, 1))
+    egi.text_at_pos(10, -100, 'Max Speed = ' + str(world.hunter.max_speed/world.hunter.floatScale))
+    egi.text_at_pos(10, -120, 'Max Force = ' + str(world.hunter.max_force/world.hunter.floatScale))
+    egi.text_at_pos(10, -140, 'Mass = ' + str(world.hunter.mass/world.hunter.floatScale))
+    egi.text_at_pos(10, -160, 'Friction = ' + str(world.hunter.friction/world.hunter.floatScale))
+    egi.text_at_pos(10, -180, 'Panic Distance = ' + str(world.hunter.panicDist/world.hunter.floatScale))
+    egi.text_at_pos(10, -210, 'Wander Values')
+    egi.text_at_pos(10, -230, 'Wander Distance = ' + str(world.hunter.wander_dist/world.hunter.floatScale))
+    egi.text_at_pos(10, -250, 'Wander radius = ' + str(world.hunter.wander_radius/world.hunter.floatScale))
+    egi.text_at_pos(10, -270, 'Wander jitter = ' + str(world.hunter.wander_jitter/world.hunter.floatScale))
 
 
 if __name__ == '__main__':
@@ -91,6 +102,7 @@ if __name__ == '__main__':
         delta = clock.tick()
         world.update(delta)
         world.render()
+        render_stats(world)
         fps_display.draw()
         # swap the double buffer
         win.flip()
