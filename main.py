@@ -29,7 +29,7 @@ def on_key_press(symbol, modifiers):
         while count < 10:
             count += 1
             add_agent()
-    ## LAB 06 TASK 1: Reset all paths to new random ones
+    # LAB 06 TASK 1: Reset all paths to new random ones
     elif symbol == KEY.R:
         for agent in world.agents:
             agent.randomise_path()
@@ -44,6 +44,12 @@ def on_key_press(symbol, modifiers):
     elif symbol in AGENT_MODES:
         for agent in world.agents:
             agent.mode = AGENT_MODES[symbol]
+    elif symbol == KEY.Q:
+        for agent in world.agents:
+            agent.max_force -= 10.0 * agent.floatScale
+    elif symbol == KEY.W:
+        for agent in world.agents:
+            agent.max_force += 10.0 * agent.floatScale
 
 def add_agent():
     newAgent = Agent(world)
@@ -72,9 +78,9 @@ if __name__ == '__main__':
 
     # create a world for agents
     world = World(500, 500)
-    # add one agent
-    world.agents.append(Agent(world))
-    world.hunter = world.agents[0]
+    # add two agents
+    add_agent()
+    add_agent()
     # unpause the world ready for movement
     world.paused = False
 

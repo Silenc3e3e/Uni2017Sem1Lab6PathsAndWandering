@@ -8,7 +8,7 @@ from vector2d import Vector2D
 from vector2d import Point2D
 from graphics import egi, KEY
 from math import sin, cos, radians
-from random import random, randrange
+from random import random, randrange, uniform
 from path import Path
 
 AGENT_MODES = {
@@ -35,7 +35,7 @@ class Agent(object):
         'fast': 2,
     }
 
-    def __init__(self, world=None, scale=30.0, mass=2.0, mode='seek', friction = 0.01):
+    def __init__(self, world=None, scale=10.0, mass=0.1, mode='seek', friction = 0.01):
         # keep a reference to the world object
         self.world = world
         self.mode = mode
@@ -45,19 +45,27 @@ class Agent(object):
         self.vel = Vector2D()
         self.heading = Vector2D(sin(dir), cos(dir))
         self.side = self.heading.perp()
+        self.floatScale = scale
         self.scale = Vector2D(scale, scale)  # easy scaling of agent size
         self.force = Vector2D()
         self.accel = Vector2D()  # current steering force
-        self.mass = mass
-        self.friction = friction
+        self.mass = mass * scale
+        self.friction = friction * scale
 
         self.hunterTargVec = Vector2D(10,10)
-        self.panicDist = 350
+        self.panicDist = 35 * scale
         self.hunterTarg = None
 
+        # NEW WANDER INFO
+        self.wander_target = Vector2D(1, 0)
+        self.wander_dist = 3.0 * scale
+        self.wander_radius = 2.0 * scale
+        self.wander_jitter = 10.0 * scale
+        self.bRadius = 1.0 * scale
+
         # limits?
-        self.max_speed = 40.0 * scale
-        ## max_force ??
+        self.max_speed = 150.0 * scale
+        self.max_force = (self.max_speed/2) * scale
 
         # data for drawing this agent
         self.color = 'ORANGE'
@@ -78,19 +86,16 @@ class Agent(object):
             Point2D(-1.0, -0.6)
         ]
 
-        ### path to follow?
+        # path to follow
         self.path = Path()
         self.loop = False
         self.randomise_path()  # <-- Doesn’t exist yet but you’ll create it
         self.waypoint_threshold = 50  # <-- Work out a value for this as you test!
 
-        ### wander details
-        # self.wander_?? ...
-
         # debug draw info?
         self.show_info = False
 
-    def calculate(self):
+    def calculate(self, delta):
         # reset the steering force
         mode = self.mode
         if mode == 'seek':
@@ -103,7 +108,7 @@ class Agent(object):
             force = self.arrive(self.world.target, 'fast')
         elif mode == 'flee':
             if self.world.hunter != self:
-                force = self.flee(self.world.hunter.pos)
+                force = self.flee(self.world.hunter.pos, delta)
             elif self.world.hunter == self:
                 totalx = 0
                 totaly = 0
@@ -141,16 +146,19 @@ class Agent(object):
                 if self.path.current_pt().distance(self.pos) < self.waypoint_threshold:
                     self.path.inc_current_pt()
                 force = self.seek(self.path.current_pt())
+        elif mode == 'wander':
+            force = self.wander(delta)
         else:
-            force = Vector2D()
+            force = self.wander(delta)
         self.force = force
         return force
 
     def update(self, delta):
         ''' update vehicle position and orientation '''
-        force = self.calculate()
-        ## limit force? <-- for wander
-        self.accel = force / self.mass
+        self.force = self.calculate(delta)
+        self.force.truncate(self.max_force)
+
+        self.accel = self.force / self.mass
         # new velocity
         self.vel += self.accel * delta
         # proportional friction
@@ -197,11 +205,6 @@ class Agent(object):
                 self.hunterTargVec = Vector2D(0, self.hunterTargVec.y)
             egi.cross(self.hunterTargVec, 10)
 
-        # draw wander info?
-        if self.mode == 'wander':
-            ## ...
-            pass
-
         # add some handy debug drawing info lines - force and velocity
         if self.show_info:
             s = 0.5 # <-- scaling factor
@@ -212,9 +215,23 @@ class Agent(object):
             egi.grey_pen()
             egi.line_with_arrow(self.pos, self.pos + self.vel * s, 5)
             # net (desired) change
-            egi.white_pen()
-            egi.line_with_arrow(self.pos+self.vel * s, self.pos+ (self.force+self.vel) * s, 5)
-            egi.line_with_arrow(self.pos, self.pos+ (self.force+self.vel) * s, 5)
+            # egi.white_pen()
+            # egi.line_with_arrow(self.pos+self.vel * s, self.pos+ (self.force+self.vel) * s, 5)
+            #egi.line_with_arrow(self.pos, self.pos+ (self.force+self.vel) * s, 5)
+
+            # draw wander info?
+            if self .mode == 'wander' :
+                # calculate the center of the wander circle in front of the agent
+                wnd_pos = Vector2D( self.wander_dist, 0)
+                wld_pos = self .world.transform_point(wnd_pos, self .pos, self .heading, self .side)
+                # draw the wander circle
+                egi.green_pen()
+                egi.circle(wld_pos, self.wander_radius)
+                # draw the wander target (little circle on the big circle)
+                egi.red_pen()
+                wnd_pos = ( self.wander_target + Vector2D( self.wander_dist, 0))
+                wld_pos = self.world.transform_point(wnd_pos, self.pos, self.heading, self.side)
+                egi.circle(wld_pos, 3) 
     def speed(self):
         return self.vel.length()
 
@@ -225,12 +242,12 @@ class Agent(object):
         desired_vel = (target_pos - self.pos).normalise() * self.max_speed
         return (desired_vel - self.vel)
 
-    def flee(self, hunter_pos):
+    def flee(self, hunter_pos, delta):
         ''' move away from hunter position '''
         if (hunter_pos - self.pos).length() < self.panicDist:
             desired_vel = -((hunter_pos - self.pos).normalise() * self.max_speed)
             return (desired_vel - self.vel)
-        return Vector2D(0, 0)
+        return self.wander(delta)
 
     def arrive(self, target_pos, speed):
         ''' this behaviour is similar to seek() but it attempts to arrive at
@@ -261,8 +278,23 @@ class Agent(object):
 
     def wander(self, delta):
         ''' Random wandering using a projected jitter circle. '''
-        ## ...
-        return Vector2D()
+        wt = self.wander_target
+        # this behaviour is dependent on the update rate, so this line must
+        # be included when using time independent framerate.
+        jitter_tts = self.wander_jitter * delta # this time slice
+        # first, add a small random vector to the target's position
+        wt += Vector2D(uniform(-1,1) * jitter_tts, uniform(-1,1) * jitter_tts)
+        # re-project this new vector back on to a unit circle
+        wt.normalise()
+        # increase the length of the vector to the same as the radius
+        # of the wander circle
+        wt *= self.wander_radius
+        # move the target into a position WanderDist in front of the agent
+        target = wt + Vector2D( self .wander_dist, 0)
+        # project the target into world space
+        wld_target = self.world.transform_point(target, self.pos, self.heading, self.side)
+        # and steer towards it 
+        return self.seek(wld_target)
 
     def FindClosest(self, agentFrom):
         closest = None
