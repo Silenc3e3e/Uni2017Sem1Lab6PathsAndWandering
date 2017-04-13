@@ -29,6 +29,12 @@ def on_key_press(symbol, modifiers):
         while count < 10:
             count += 1
             add_agent()
+    ## LAB 06 TASK 1: Reset all paths to new random ones
+    # ...
+    # Toggle debug force line info on the agent
+    elif symbol == KEY.I:
+        for agent in world.agents:
+            agent.show_info = not agent.show_info
     elif symbol in AGENT_MODES:
         for agent in world.agents:
             agent.mode = AGENT_MODES[symbol]

@@ -32,7 +32,7 @@ class Agent(object):
         'fast': 2,
     }
 
-    def __init__(self, world=None, scale=29.0, mass=1.1, mode='seek', friction = 0.05):
+    def __init__(self, world=None, scale=30.0, mass=2.0, mode='seek', friction = 0.01):
         # keep a reference to the world object
         self.world = world
         self.mode = mode
@@ -43,7 +43,8 @@ class Agent(object):
         self.heading = Vector2D(sin(dir), cos(dir))
         self.side = self.heading.perp()
         self.scale = Vector2D(scale, scale)  # easy scaling of agent size
-        self.acceleration = Vector2D()  # current steering force
+        self.force = Vector2D()
+        self.accel = Vector2D()  # current steering force
         self.mass = mass
         self.friction = friction
 
@@ -52,7 +53,9 @@ class Agent(object):
         self.hunterTarg = None
 
         # limits?
-        self.max_speed = 2000.0
+        self.max_speed = 40.0 * scale
+        ## max_force ??
+
         # data for drawing this agent
         self.color = 'ORANGE'
         self.vehicle_shape = [
@@ -72,20 +75,29 @@ class Agent(object):
             Point2D(-1.0, -0.6)
         ]
 
+        ### path to follow?
+        # self.path = ??
+
+        ### wander details
+        # self.wander_?? ...
+
+        # debug draw info?
+        self.show_info = False
+
     def calculate(self):
         # reset the steering force
         mode = self.mode
         if mode == 'seek':
-            accel = self.seek(self.world.target)
+            force = self.seek(self.world.target)
         elif mode == 'arrive_slow':
-            accel = self.arrive(self.world.target, 'slow')
+            force = self.arrive(self.world.target, 'slow')
         elif mode == 'arrive_normal':
-            accel = self.arrive(self.world.target, 'normal')
+            force = self.arrive(self.world.target, 'normal')
         elif mode == 'arrive_fast':
-            accel = self.arrive(self.world.target, 'fast')
+            force = self.arrive(self.world.target, 'fast')
         elif mode == 'flee':
             if self.world.hunter != self:
-                accel = self.flee(self.world.hunter.pos)
+                force = self.flee(self.world.hunter.pos)
             elif self.world.hunter == self:
                 totalx = 0
                 totaly = 0
@@ -97,7 +109,7 @@ class Agent(object):
                 totalx = totalx / totalAgents
                 totaly = totaly / totalAgents
                 dumAgent = DummyAgent(totalx, totaly)
-                accel = self.pursuit(self.FindClosest(dumAgent))
+                force = self.pursuit(self.FindClosest(dumAgent))
 
         elif mode == 'pursuit' and self == self.world.hunter:
             target = self.FindClosest(self)
@@ -113,17 +125,19 @@ class Agent(object):
             else:
                 self.hunterTarg = target
             target.mode = 'flee'
-            accel = self.pursuit(target)
+            force = self.pursuit(target)
         else:
-            accel = Vector2D()
-        self.acceleration = accel
-        return accel
+            force = Vector2D()
+        self.force = force
+        return force
 
     def update(self, delta):
         ''' update vehicle position and orientation '''
-        acceleration = self.calculate()
+        force = self.calculate()
+        ## limit force? <-- for wander
+        self.accel = force / self.mass
         # new velocity
-        self.vel += (acceleration) * delta
+        self.vel += self.accel * delta
         # proportional friction
         self.vel = self.vel * (1-(self.friction*(self.vel.length()/self.max_speed)))
 
@@ -139,6 +153,11 @@ class Agent(object):
         self.world.wrap_around(self.pos)
 
     def render(self, color=None):
+        # draw the path if it exists and the mode is follow
+        if self.mode == 'follow_path':
+            ## ...
+            pass
+
         ''' Draw the triangle agent with color'''
         color = None
         shape = None
@@ -149,8 +168,7 @@ class Agent(object):
             color = 'RED'
             shape = self.hunter_shape
         egi.set_pen_color(name=color)
-        pts = self.world.transform_points(shape, self.pos,
-                                          self.heading, self.side, self.scale)
+        pts = self.world.transform_points(shape, self.pos, self.heading, self.side, self.scale)
         # draw it!
         egi.closed_shape(pts)
         if ((self.mode == 'pursuit' or self.mode == 'flee') and self == self.world.hunter):
@@ -165,6 +183,24 @@ class Agent(object):
                 self.hunterTargVec = Vector2D(0, self.hunterTargVec.y)
             egi.cross(self.hunterTargVec, 10)
 
+        # draw wander info?
+        if self.mode == 'wander':
+            ## ...
+            pass
+
+        # add some handy debug drawing info lines - force and velocity
+        if self.show_info:
+            s = 0.5 # <-- scaling factor
+            # force
+            egi.red_pen()
+            egi.line_with_arrow(self.pos, self.pos + self.force * s, 5)
+            # velocity
+            egi.grey_pen()
+            egi.line_with_arrow(self.pos, self.pos + self.vel * s, 5)
+            # net (desired) change
+            egi.white_pen()
+            egi.line_with_arrow(self.pos+self.vel * s, self.pos+ (self.force+self.vel) * s, 5)
+            egi.line_with_arrow(self.pos, self.pos+ (self.force+self.vel) * s, 5)
     def speed(self):
         return self.vel.length()
 
@@ -208,6 +244,11 @@ class Agent(object):
         #print(str(target_pos.x) + "targetpos")
         self.hunterTargVec = Vector2D(target_pos.x, target_pos.y)
         return (self.arrive(target_pos, 'slow'))
+
+    def wander(self, delta):
+        ''' Random wandering using a projected jitter circle. '''
+        ## ...
+        return Vector2D()
 
     def FindClosest(self, agentFrom):
         closest = None

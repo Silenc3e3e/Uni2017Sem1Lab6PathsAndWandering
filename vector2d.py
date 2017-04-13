@@ -162,5 +162,10 @@ class Vector2D(object):
     def __rdiv__(self, lhs):  # lhs (scalar) / self
         return Vector2D(lhs/self.x, lhs/self.y)
 
+    def __truediv__(self, rhs):  # self / rhs (scalar)
+        return Vector2D(self.x/rhs, self.y/rhs)
+    def __rtruediv__(self, lhs):  # lhs (scalar) / self
+        return Vector2D(lhs/self.x, lhs/self.y)
+    
     def __str__(self):
         return '[%7.2f, %7.2f]' % (self.x, self.y)
