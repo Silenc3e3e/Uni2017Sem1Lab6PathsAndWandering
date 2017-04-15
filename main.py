@@ -119,14 +119,14 @@ def on_key_press(symbol, modifiers):
     #WANDER JITTER
     elif symbol == KEY.N:
         for agent in world.agents:
-            if agent.wander_jitter > 0.5:
-                agent.wander_jitter -= 0.5
+            if agent.wander_jitter > 1:
+                agent.wander_jitter -= 1
     elif symbol == KEY.M:
         for agent in world.agents:
-            agent.wander_jitter += 0.5
+            agent.wander_jitter += 1
 
 def add_agent():
-    newAgent = Agent(world, world.hunter.floatScale, world.hunter.mass,'seek',
+    newAgent = Agent(world, world.hunter.floatScale, world.hunter.mass, world.hunter.mode,
         world.hunter.friction, world.hunter.panicDist,
         world.hunter.max_speed, world.hunter.waypoint_threshold, world.hunter.loop,
         world.hunter.wander_dist, world.hunter.wander_radius,

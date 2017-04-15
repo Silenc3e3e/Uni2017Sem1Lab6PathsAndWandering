@@ -8,7 +8,7 @@ from vector2d import Vector2D
 from vector2d import Point2D
 from graphics import egi, KEY
 from math import sin, cos, radians
-from random import random, randrange, uniform
+from random import random, randrange, uniform, randint
 from path import Path
 
 AGENT_MODES = {
@@ -30,12 +30,13 @@ class Agent(object):
 
     # NOTE: Class Object (not *instance*) variables!
     DECELERATION_SPEEDS = {
-        'slow': 0.1,
-        'normal': .5,
+        'slow': 0.5,
+        'mild': 0.75,
+        'normal': 1,
         'fast': 2,
     }
 
-    def __init__(self, world=None, scale=10.0, mass=0.1, mode='seek', friction = 0.01, panicDistance = 35, maxSpeed = 150.0, waypointThreshold = 50, waypointLoop = False, wanderDistance = 4.0, wanderRadius = 2.0, wanderJitter = 10.0, displayInfo = False, maxForce = 75.0):
+    def __init__(self, world=None, scale=10.0, mass=0.1, mode='seek', friction = 0.01, panicDistance = 35, maxSpeed = 70.0, waypointThreshold = 10, waypointLoop = False, wanderDistance = 8.25, wanderRadius = 6.75, wanderJitter = 76.0, displayInfo = False, maxForce = 35.0):
         # keep a reference to the world object
         self.world = world
         self.mode = mode
@@ -141,14 +142,7 @@ class Agent(object):
             target.mode = 'flee'
             force = self.pursuit(target)
         elif mode == 'follow_path':
-            if self.path.current_pt().distance(self.pos) < self.waypoint_threshold * self.floatScale:
-                    self.path.inc_current_pt()
-            if self.path.is_finished():
-                force = self.arrive(self.path.current_pt(),'fast')
-            else:
-                if self.path.current_pt().distance(self.pos) < self.waypoint_threshold * self.floatScale:
-                    self.path.inc_current_pt()
-                force = self.seek(self.path.current_pt())
+            force = self.FollowPath()
         elif mode == 'wander':
             force = self.wander(delta)
         else:
@@ -165,7 +159,7 @@ class Agent(object):
         # new velocity
         self.vel += self.accel * delta
         # proportional friction
-        self.vel = self.vel * (1-((self.friction * self.floatScale)*(self.vel.length()/(self.max_speed * self.floatScale))))
+        #self.vel = self.vel * (1-((self.friction * self.floatScale)*(self.vel.length()/(self.max_speed * self.floatScale))))
 
         # check for limits of new velocity
         self.vel.truncate(self.max_speed * self.floatScale)
@@ -179,10 +173,6 @@ class Agent(object):
         self.world.wrap_around(self.pos)
 
     def render(self, color=None):
-        # draw the path if it exists and the mode is follow
-        if self.mode == 'follow_path':
-            self.path.render()
-
         ''' Draw the triangle agent with color'''
         color = None
         shape = None
@@ -222,8 +212,11 @@ class Agent(object):
             # egi.line_with_arrow(self.pos+self.vel * s, self.pos+ (self.force+self.vel) * s, 5)
             #egi.line_with_arrow(self.pos, self.pos+ (self.force+self.vel) * s, 5)
 
+            # draw the path if it exists and the mode is follow
+            if self.mode == 'follow_path':
+                self.path.render()
             # draw wander info?
-            if self .mode == 'wander' :
+            elif self .mode == 'wander' :
                 # calculate the center of the wander circle in front of the agent
                 wnd_pos = Vector2D( self.wander_dist * self.floatScale, 0)
                 wld_pos = self .world.transform_point(wnd_pos, self .pos, self .heading, self .side)
@@ -258,10 +251,10 @@ class Agent(object):
         decel_rate = self.DECELERATION_SPEEDS[speed]
         to_target = target_pos - self.pos
         dist = to_target.length()
-        if dist > 0:
+        if not dist == 0:
             # calculate the speed required to reach the target given the
             # desired deceleration rate
-            speed = dist / decel_rate
+            speed = dist * decel_rate
             # make sure the velocity does not exceed the max
             speed = min(speed, (self.max_speed * self.floatScale))
             # from here proceed just like Seek except we don't need to
@@ -277,14 +270,14 @@ class Agent(object):
         target_pos = evader.pos + evader.vel
         #print(str(target_pos.x) + "targetpos")
         self.hunterTargVec = Vector2D(target_pos.x, target_pos.y)
-        return (self.arrive(target_pos, 'slow'))
+        return (self.arrive(target_pos, 'normal'))
 
     def wander(self, delta):
         ''' Random wandering using a projected jitter circle. '''
         wt = self.wander_target
         # this behaviour is dependent on the update rate, so this line must
         # be included when using time independent framerate.
-        jitter_tts = self.wander_jitter * self.floatScale * delta # this time slice
+        jitter_tts = self.wander_jitter * delta # this time slice
         # first, add a small random vector to the target's position
         wt += Vector2D(uniform(-1,1) * jitter_tts, uniform(-1,1) * jitter_tts)
         # re-project this new vector back on to a unit circle
@@ -293,11 +286,19 @@ class Agent(object):
         # of the wander circle
         wt *= self.wander_radius * self.floatScale
         # move the target into a position WanderDist in front of the agent
-        target = wt + Vector2D( self .wander_dist, 0)
+        target = wt + Vector2D( self.wander_dist * self.floatScale, 0)
         # project the target into world space
         wld_target = self.world.transform_point(target, self.pos, self.heading, self.side)
         # and steer towards it 
-        return self.arrive(wld_target,'normal')
+        return self.arrive(wld_target, 'normal')
+
+    def FollowPath(self):
+        if self.path.current_pt().distance(self.pos) < self.waypoint_threshold * self.floatScale:
+            self.path.inc_current_pt()
+        if self.path.is_finished():
+            return self.arrive(self.path.current_pt(),'fast')
+        else:
+            return self.seek(self.path.current_pt())
 
     def FindClosest(self, agentFrom):
         closest = None
@@ -312,5 +313,5 @@ class Agent(object):
     def randomise_path(self):
         cx = self.world.cx  # width
         cy = self.world.cy  # height
-        margin = min(cx, cy) * (1/6)  # use this for padding in the next line ...
-        self.path.create_random_path(4,margin,margin,cx-margin,cy-margin, self.loop)  # you have to figure out the parameters 
+        margin = min(cx, cy) * (1/6)  # use this for padding in the next line ... #previous min(cx, cy)
+        self.path.create_random_path(randint(3,16),margin,margin,cx-margin,cy-margin, self.loop)  # you have to figure out the parameters 

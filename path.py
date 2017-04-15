@@ -50,7 +50,7 @@ class Path(object):
         assert self._num_pts > 0
         if not self.is_finished():
             self._cur_pt_idx += 1
-        if self.is_finished() and self.looped:
+        elif self.is_finished() and self.looped:
             self._cur_pt_idx = 0
 
     def is_finished(self):
